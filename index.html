@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Axis Rotation Visualizer</title>
+    <!-- Updated Three.js library to a newer version that supports custom axis colors -->
+    <script src="https://unpkg.com/three@0.140.0/build/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; color: #fff; font-family: sans-serif; }
+        
+        /* Style for the slider controls */
+        #controls { position: absolute; top: 20px; left: 20px; background: rgba(30, 30, 30, 0.9); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .slider-group { margin-bottom: 15px; }
+        label { display: inline-block; width: 120px; font-weight: bold; }
+        input[type=range] { width: 150px; }
+        span.val { display: inline-block; width: 40px; text-align: right; }
+        
+        /* Style for the matrix display */
+        #matrix-display { position: absolute; top: 20px; right: 20px; background: rgba(30, 30, 30, 0.9); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        table { border-collapse: collapse; margin-top: 10px; background: #000; }
+        td { border: 1px solid #555; padding: 15px; width: 60px; text-align: center; font-family: monospace; font-size: 16px; }
+        
+        /* Style for the Legend */
+        #legend { position: absolute; bottom: 20px; left: 20px; background: rgba(30, 30, 30, 0.9); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #legend h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
+        .legend-item { margin-bottom: 8px; font-weight: bold; letter-spacing: 0.5px; }
+        .legend-note { font-size: 13px; color: #ccc; margin-top: 12px; line-height: 1.4; }
+        
+        button { background: #4CAF50; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-weight: bold; margin-top: 10px;}
+        button:hover { background: #45a049; }
+    </style>
+</head>
+<body>
+
+    <!-- Sliders for Translation and Rotation -->
+    <div id="controls">
+        <h3>Move Frame 1</h3>
+        <div class="slider-group">
+            <label>Translate X:</label>
+            <input type="range" id="posX" min="-5" max="5" step="0.1" value="2">
+            <span class="val" id="valPosX">2.0</span>
+        </div>
+        <div class="slider-group">
+            <label>Translate Y:</label>
+            <input type="range" id="posY" min="-5" max="5" step="0.1" value="2">
+            <span class="val" id="valPosY">2.0</span>
+        </div>
+        <div class="slider-group">
+            <label>Translate Z:</label>
+            <input type="range" id="posZ" min="-5" max="5" step="0.1" value="0">
+            <span class="val" id="valPosZ">0.0</span>
+        </div>
+        
+        <hr style="border: 0.5px solid #444; margin: 15px 0;">
+        
+        <div class="slider-group">
+            <label>Rotate X (deg):</label>
+            <input type="range" id="rotX" min="-180" max="180" step="1" value="0">
+            <span class="val" id="valRotX">0</span>
+        </div>
+        <div class="slider-group">
+            <label>Rotate Y (deg):</label>
+            <input type="range" id="rotY" min="-180" max="180" step="1" value="0">
+            <span class="val" id="valRotY">0</span>
+        </div>
+        <div class="slider-group">
+            <label>Rotate Z (deg):</label>
+            <input type="range" id="rotZ" min="-180" max="180" step="1" value="0">
+            <span class="val" id="valRotZ">0</span>
+        </div>
+        
+        <button onclick="reset()">Reset All</button>
+    </div>
+
+    <!-- Rotation Matrix Table -->
+    <div id="matrix-display">
+        <h3>Rotation Matrix (Frame 1 to 0)</h3>
+        <table>
+            <tr><td id="m00">1.00</td><td id="m01">0.00</td><td id="m02">0.00</td></tr>
+            <tr><td id="m10">0.00</td><td id="m11">1.00</td><td id="m12">0.00</td></tr>
+            <tr><td id="m20">0.00</td><td id="m21">0.00</td><td id="m22">1.00</td></tr>
+        </table>
+    </div>
+
+    <!-- Axis Legend -->
+    <div id="legend">
+        <h3>Axis Legend</h3>
+        <div class="legend-item"><span style="color: #ff0000;">■</span> X-Axis (Red)</div>
+        <div class="legend-item"><span style="color: #00ff00;">■</span> Y-Axis (Green)</div>
+        <div class="legend-item"><span style="color: #0066ff;">■</span> Z-Axis (Blue)</div>
+        
+        <div class="legend-note">
+            <strong>Fixed Base (Origin):</strong> Lighter / Pastel<br>
+            <strong>Moving Frame 1:</strong> Bright / Solid
+        </div>
+    </div>
+
+    <script>
+        // 1. Setup the 3D Scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(8, 6, 10);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 2. Create Frame 0 (Fixed Base)
+        // Set to pastel/lighter colors so it doesn't get lost when Frame 1 overlaps
+        const axes0 = new THREE.AxesHelper(4); // Made slightly longer (4) so it sticks out
+        axes0.setColors(0xff8888, 0x88ff88, 0x8888ff); 
+        scene.add(axes0);
+        
+        // Add a grid for perspective
+        const grid = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+        scene.add(grid);
+
+        // 3. Create Frame 1 (Movable)
+        const frame1 = new THREE.Group();
+        const axes1 = new THREE.AxesHelper(3);
+        // Set to bright, bold solid colors
+        axes1.setColors(0xff0000, 0x00ff00, 0x0000ff);
+        frame1.add(axes1);
+        
+        // Set initial position
+        frame1.position.set(2, 2, 0);
+        scene.add(frame1);
+
+        // 4. Connect Sliders to Frame 1
+        const ids = ['posX', 'posY', 'posZ', 'rotX', 'rotY', 'rotZ'];
+        
+        ids.forEach(id => {
+            document.getElementById(id).addEventListener('input', function(e) {
+                // Update text values
+                let val = parseFloat(e.target.value);
+                document.getElementById('val' + id.charAt(0).toUpperCase() + id.slice(1)).innerText = id.startsWith('rot') ? val : val.toFixed(1);
+                
+                // Update Frame 1 Position
+                frame1.position.x = parseFloat(document.getElementById('posX').value);
+                frame1.position.y = parseFloat(document.getElementById('posY').value);
+                frame1.position.z = parseFloat(document.getElementById('posZ').value);
+                
+                // Update Frame 1 Rotation (convert degrees to radians)
+                frame1.rotation.x = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotX').value));
+                frame1.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotY').value));
+                frame1.rotation.z = THREE.MathUtils.degToRad(parseFloat(document.getElementById('rotZ').value));
+                
+                updateMatrixDisplay();
+            });
+        });
+
+        // 5. Calculate and Display the Rotation Matrix
+        function updateMatrixDisplay() {
+            frame1.updateMatrix(); 
+            const e = frame1.matrix.elements;
+            
+            // Format to 2 decimal places
+            document.getElementById('m00').innerText = e[0].toFixed(2);
+            document.getElementById('m10').innerText = e[1].toFixed(2);
+            document.getElementById('m20').innerText = e[2].toFixed(2);
+            
+            document.getElementById('m01').innerText = e[4].toFixed(2);
+            document.getElementById('m11').innerText = e[5].toFixed(2);
+            document.getElementById('m21').innerText = e[6].toFixed(2);
+            
+            document.getElementById('m02').innerText = e[8].toFixed(2);
+            document.getElementById('m12').innerText = e[9].toFixed(2);
+            document.getElementById('m22').innerText = e[10].toFixed(2);
+        }
+
+        // Reset function
+        window.reset = function() {
+            const defaults = { posX: 2, posY: 2, posZ: 0, rotX: 0, rotY: 0, rotZ: 0 };
+            for (let [id, val] of Object.entries(defaults)) {
+                let el = document.getElementById(id);
+                el.value = val;
+                el.dispatchEvent(new Event('input'));
+            }
+        }
+
+        // Adjust canvas if window resizes
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize
+        updateMatrixDisplay();
+        animate();
+    </script>
+</body>
+</html>
