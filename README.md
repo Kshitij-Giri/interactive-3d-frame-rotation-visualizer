@@ -2,6 +2,14 @@
 
 An interactive 3D visualization tool for understanding coordinate-frame transformations, rigid-body rotations, and rotation matrices.
 
+## Video Demonstration
+
+YouTube: https://youtu.be/l0d80i-A2vs
+
+## Live Demo
+
+https://kshitij-giri.github.io/interactive-3d-frame-rotation-visualizer/
+
 ## Overview
 
 This project visualizes two coordinate frames in 3D space:
