@@ -66,5 +66,6 @@ The project can also be deployed using GitHub Pages.
 ## Author
 
 Kshitij Giri
-
+Roll No. 23110177
+Dual Major B.Tech (Mechanical Engineering & Artificial Intelligence)
 IIT Gandhinagar
